@@ -1,0 +1,50 @@
+name: Rename to Kairo Code
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  rename:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Change package name in properties.sh
+        shell: bash
+        run: |
+          set -e
+          NEW="com.kairocode"
+          F="scripts/properties.sh"
+
+          if [ ! -f "$F" ]; then
+            echo "ERROR: $F not found. This is not the termux-packages repo."
+            exit 1
+          fi
+
+          echo ">> Before:"
+          grep -n "^TERMUX_APP__PACKAGE_NAME=\|^TERMUX_APP_PACKAGE=" "$F" || true
+
+          sed -i -E "s/^(TERMUX_APP__PACKAGE_NAME=).*/\1\"${NEW}\"/" "$F"
+          sed -i -E "s/^(TERMUX_APP_PACKAGE=).*/\1\"${NEW}\"/" "$F"
+
+          echo ">> After:"
+          grep -n "^TERMUX_APP__PACKAGE_NAME=\|^TERMUX_APP_PACKAGE=" "$F" || true
+
+          if ! grep -q "\"${NEW}\"" "$F"; then
+            echo "ERROR: package name line was not found in $F"
+            exit 1
+          fi
+
+      - name: Commit and push
+        shell: bash
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          git diff --cached --quiet && echo "No changes to commit" && exit 0
+          git commit -m "Set package name to com.kairocode"
+          git push
