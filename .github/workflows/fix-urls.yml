@@ -1,0 +1,38 @@
+name: Fix broken links
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  fix:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Restore GitHub/Twitter links
+        shell: bash
+        run: |
+          set -e
+          { grep -rIl --exclude-dir=.git --exclude-dir=.github \
+            -E "(github|twitter)\.com/kairocode" . || true; } \
+            | xargs -r perl -pi -e 's#(github|twitter)\.com/kairocode#$1.com/termux#g'
+
+          echo ">> Broken links left (should be 0):"
+          grep -rIn --exclude-dir=.git --exclude-dir=.github -E "(github|twitter)\.com/kairocode" . | wc -l || true
+
+          echo ">> Bootstrap download link:"
+          grep -n "remoteUrl =" app/build.gradle
+
+      - name: Commit and push
+        shell: bash
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          git diff --cached --quiet && echo "No changes to commit" && exit 0
+          git commit -m "Fix links broken by package rename"
+          git push
